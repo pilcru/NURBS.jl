@@ -1,4 +1,4 @@
-import Iterators: product
+import IterTools: product
 
 using NURBS.Utils
 using NURBS.Bases

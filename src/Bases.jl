@@ -1,6 +1,6 @@
 module Bases
 
-import Iterators: groupby, imap
+import IterTools: groupby, imap
 import ..Utils: Interval
 
 export Basis, Basis1D, domain, deriv, order,
