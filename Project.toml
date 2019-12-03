@@ -1,5 +1,5 @@
 name = "NURBS"
-uuid = "cbc382c9-75ad-5a02-90e9-14306f7bb271"
+uuid = "47bf582d-267e-5eba-99a4-ad788df502a8"
 authors = ["Pierre Cuvilliers"]
 version = "0.1.0"
 
@@ -11,8 +11,9 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 julia = "1.2"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test"]
+profile = ["profile"]
