@@ -1,15 +1,16 @@
 import IterTools: product
+import LinearAlgebra: dot
 
 using NURBS.Utils
 using NURBS.Bases
 
-info("Testing NURBS.Bases")
+@info "Testing NURBS.Bases"
 
 
 # BSplineBasis inner constructor
 # ========================================================================
 
-basis = BSplineBasis(linspace(0, 4, 5), 3)
+basis = BSplineBasis(range(0, stop=4, length=5), 3)
 @test basis.knots == [0, 0, 0, 1, 2, 3, 4, 4, 4]
 @test basis.order == 3
 @test basis.deriv == 0
@@ -56,18 +57,18 @@ basis = BSplineBasis(0, 2, 5, 3)
 function testeval_snn(b, x, vals, idxs)
     (rvals, ridxs) = b(x)
     @test ridxs == idxs
-    @test_approx_eq rvals vals
+    @test isapprox(rvals, vals)
 
     coeffs = rand(length(b))
-    @test_approx_eq dot(coeffs[ridxs], vals) b(x, coeffs)
+    @test isapprox(dot(coeffs[ridxs], vals), b(x, coeffs))
 
     for (v, i) in zip(vals, idxs)
-        @test_approx_eq b[i](x) v
+        @test isapprox(b[i](x), v)
     end
 
     for i in 1:length(b)
         if i ∉ idxs
-            @test_approx_eq b[i](x) 0.0
+            @test isapprox(b[i](x), 0.0)
         end
     end
 end
@@ -109,31 +110,31 @@ function testeval_mnn(b, xs)
     coeffs = rand(length(b), 3)
     resc = b(xs, coeffs)
     for (i, (vals, idxs)) in enumerate(res)
-        @test_approx_eq vals'*coeffs[idxs,:] resc[i,:]
+        @test isapprox(dropdims(vals' * coeffs[idxs,:], dims=1), resc[i,:])
     end
 end
 
 basis = BSplineBasis(0, 2, 2, 2)
 pts = [0.0, 0.4, 0.8, 1.0, 1.5, 2.0]
 testeval_mnn(basis, pts)
-@test_approx_eq basis[1](pts) [1.0; 0.6; 0.2; zeros(3)]
-@test_approx_eq basis[2](pts) [0.0, 0.4, 0.8, 1.0, 0.5, 0.0]
-@test_approx_eq basis[3](pts) [zeros(4); 0.5; 1.0]
+@test isapprox(basis[1](pts), [1.0; 0.6; 0.2; zeros(3)])
+@test isapprox(basis[2](pts), [0.0, 0.4, 0.8, 1.0, 0.5, 0.0])
+@test isapprox(basis[3](pts), [zeros(4); 0.5; 1.0])
 
 basis = BSplineBasis(0, 3, 4, 3)
 pts = [0.0, 0.4, 0.8, 1.0, 1.5, 2.0, 2.2, 2.8, 3.0]
 testeval_mnn(basis, pts)
-@test_approx_eq basis[1](pts) [1.0; 0.2177777777777774; zeros(7)]
-@test_approx_eq basis[3](pts) [0.0, 0.1422222222222222, 0.56222222222222222, 0.722222222222222,
-                               0.5, 0.0555555555555555, 0.00222222222222222, 0.0, 0.0]
-@test_approx_eq basis[6](pts) [zeros(7); 0.53777777777777777; 1.0]
+@test isapprox(basis[1](pts), [1.0; 0.2177777777777774; zeros(7)])
+@test isapprox(basis[3](pts), [0.0, 0.1422222222222222, 0.56222222222222222, 0.722222222222222,
+                               0.5, 0.0555555555555555, 0.00222222222222222, 0.0, 0.0])
+@test isapprox(basis[6](pts), [zeros(7); 0.53777777777777777; 1.0])
 
 basis = BSplineBasis([0, 1, 3, 4], 4)
 pts = [0.0, 0.8, 1.6, 2.4, 3.2, 4.0]
 testeval_mnn(basis, pts)
-@test_approx_eq basis[2](pts) [0.0; 0.5795555555555555; 0.15244444444444444; 0.012; zeros(2)]
-@test_approx_eq basis[4](pts) [0.0, 0.0426666666666666, 0.29333333333333333, 0.542222222222222,
-                               0.3697777777777777, 0.0]
+@test isapprox(basis[2](pts), [0.0; 0.5795555555555555; 0.15244444444444444; 0.012; zeros(2)])
+@test isapprox(basis[4](pts), [0.0, 0.0426666666666666, 0.29333333333333333, 0.542222222222222,
+                               0.3697777777777777, 0.0])
 
 
 # Single point, derivatives
@@ -142,18 +143,18 @@ function testeval_sdn(b, x, dt=1e-6, tol=1e-8)
     (dvp, didp), (dvn, didn) = b([x+dt, x-dt])
     @test didxs == didp == didn
     nderiv = (dvp - dvn) / 2dt
-    @test_approx_eq_eps nderiv dvals tol
+    @test isapprox(nderiv, dvals, atol=tol)
 
     coeffs = rand(length(b), 4)
-    @test_approx_eq dvals'*coeffs[didxs,:] deriv(b)(x, coeffs)
+    @test isapprox(dvals'*coeffs[didxs,:], deriv(b)(x, coeffs))
 
     for (v, i) in zip(dvals, didxs)
-        @test_approx_eq deriv(b[i])(x) v
+        @test isapprox(deriv(b[i])(x), v)
     end
 
     for i in 1:length(b)
         if !(i in didxs)
-            @test_approx_eq deriv(b[i])(x) 0.0
+            @test isapprox(deriv(b[i])(x), 0.0)
         end
     end
 end
@@ -165,59 +166,61 @@ end
 basis = deriv(basis)
 @test_throws ArgumentError deriv(basis)
 
-basis = BSplineBasis([0, 0.5, 0.7, 0.8], 3)
-for i in 1:2
-    for pt in [0.1, 0.3, 0.6, 0.73]
-        testeval_sdn(basis, pt)
+let basis = BSplineBasis([0, 0.5, 0.7, 0.8], 3)
+    for i in 1:2
+        for pt in [0.1, 0.3, 0.6, 0.73]
+            testeval_sdn(basis, pt)
+        end
+        basis = deriv(basis)
     end
-    basis = deriv(basis)
+    @test_throws ArgumentError deriv(basis)
 end
-@test_throws ArgumentError deriv(basis)
 
-basis = BSplineBasis(0, 2, 4, 4)
-for i in 1:3
-    for pt in [0.1, 0.7, 1.2, 1.6]
-        testeval_sdn(basis, pt)
+let basis = BSplineBasis(0, 2, 4, 4)
+    for i in 1:3
+        for pt in [0.1, 0.7, 1.2, 1.6]
+            testeval_sdn(basis, pt)
+        end
+        basis = deriv(basis)
     end
-    basis = deriv(basis)
+    @test_throws ArgumentError deriv(basis)
 end
-@test_throws ArgumentError deriv(basis)
 
 
 # Multiple points, derivatives
 function testeval_mdn(b, xs, dt=1e-6, tol=1e-8)
     res = deriv(b)(xs)
-    resn = b(xs+dt)
-    resp = b(xs-dt)
+    resn = b(xs.+dt)
+    resp = b(xs.-dt)
     for ((v, id), (nv, nid), (pv, pid)) in zip(res, resn, resp)
         @test typeof(v) <: Vector
         @test id == nid == pid
         nderiv = (nv - pv) / 2dt
-        @test_approx_eq_eps nderiv v tol
+        @test isapprox(nderiv, v, atol=tol)
     end
 
     coeffs = rand(length(b))
     resc = deriv(b)(xs, coeffs)
     for (i, (v, id)) in enumerate(res)
-        @test_approx_eq dot(v, coeffs[id]) resc[i]
+        @test isapprox(dot(v, coeffs[id]), resc[i])
     end
 end
 
 basis = BSplineBasis([0, 0.1, 0.8, 1.2], 2)
 testeval_mdn(basis, [0.02, 0.3, 0.7, 0.9])
 
-basis = BSplineBasis(6, 12, 3, 3)
-for i in 1:2
-    testeval_mdn(basis, [6.43, 7.8, 8.3, 9.1, 10.1, 11.8])
-    basis = deriv(basis)
+let basis = BSplineBasis(6, 12, 3, 3)
+    for i in 1:2
+        testeval_mdn(basis, [6.43, 7.8, 8.3, 9.1, 10.1, 11.8])
+        basis = deriv(basis)
+    end
 end
-
-basis = BSplineBasis(5, 15, 10, 4)
-for i in 1:3
-    testeval_mdn(basis, collect(linspace(5.5, 14.5, 10)))
-    basis = deriv(basis)
+let basis = BSplineBasis(5, 15, 10, 4)
+    for i in 1:3
+        testeval_mdn(basis, collect(range(5.5, stop=14.5, length=10)))
+        basis = deriv(basis)
+    end
 end
-
 
 # BSplineBasis indexing
 # ========================================================================

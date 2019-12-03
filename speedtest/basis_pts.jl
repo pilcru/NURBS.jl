@@ -1,3 +1,4 @@
+using Profile
 using NURBS.Bases
 
 bs = BSplineBasis(0, 1, 1, 4)

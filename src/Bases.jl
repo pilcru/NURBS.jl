@@ -1,6 +1,7 @@
 module Bases
 
 import IterTools: groupby, imap
+import LinearAlgebra: dot
 import ..Utils: Interval
 
 export Basis, Basis1D, domain, deriv, order,
@@ -8,26 +9,20 @@ export Basis, Basis1D, domain, deriv, order,
        NURBSBasis
 
 
-macro assert_ex(condition, error)
-    :($condition ? nothing : throw($error))
-end
-
-
 # Abstract Basis types
 # ========================================================================
 
-abstract Basis
-abstract Basis1D <: Basis
+abstract type Basis end
+abstract type Basis1D <: Basis end
 
-type BasisFunction1D{B<:Basis1D}
+mutable struct BasisFunction1D{B<:Basis1D}
     basis::B
     index::Int
     deriv::Int
 
-    function BasisFunction1D(basis, index, deriv)
-        @assert_ex(1 <= index <= length(basis), BoundsError())
-        @assert_ex(0 <= deriv <= nderivs(basis),
-                   ArgumentError("Differentiation order not supported"))
+    function BasisFunction1D{B}(basis, index, deriv) where {B<:Basis1D}
+        if !(1 <= index <= length(basis)) throw(BoundsError()) end
+        if !(0 <= deriv <= nderivs(basis)) throw(ArgumentError("Differentiation order not supported")) end
         new(basis, index, deriv)
     end
 
@@ -37,20 +32,20 @@ end
 deriv(b::BasisFunction1D) = typeof(b)(b.basis, b.index, b.deriv+1)
 deriv(b::BasisFunction1D, order) = typeof(b)(b.basis, b.index, b.deriv+order)
 
-function Base.call{B<:Basis1D, T<:Real}(b::B, pt::T)
+function (b::Basis1D)(pt::T) where {T<:Real}
     rng = supported(b, pt)
-    (squeeze(evaluate_raw(b, [pt], b.deriv, rng), 2), rng)
+    (dropdims(evaluate_raw(b, [pt], b.deriv, rng), dims=2), rng)
 end
 
-function Base.call{B<:BasisFunction1D, T<:Real}(b::B, pt::T)
+function (b::BasisFunction1D)(pt::T) where {T<:Real}
     rng = supported(b.basis, pt)
     if b.index ∉ rng return 0.0 end
     evaluate_raw(b.basis, [pt], b.deriv, rng)[1 + b.index - rng.start, 1]
 end
 
-function Base.call{B<:Basis1D, T<:Real}(b::B, pts::Vector{T})
-    tp = (Vector{Float64}, UnitRange{Int})
-    res = Array(tp, length(pts))
+function (b::Basis1D)(pts::Vector{T}) where {T<:Real}
+    tp = Tuple{Vector{T}, UnitRange{Int}}
+    res = Array{tp}(undef, length(pts))
 
     j = 0
     for (subpts, rng) in supported(b, pts)
@@ -63,7 +58,7 @@ function Base.call{B<:Basis1D, T<:Real}(b::B, pts::Vector{T})
     res
 end
 
-function Base.call{B<:BasisFunction1D, T<:Real}(b::B, pts::Vector{T})
+function (b::BasisFunction1D)(pts::Vector{T}) where {T<:Real}
     res = zeros(Float64, length(pts))
 
     i = 1
@@ -72,26 +67,26 @@ function Base.call{B<:BasisFunction1D, T<:Real}(b::B, pts::Vector{T})
         if b.index ∉ rng continue end
 
         out = evaluate_raw(b.basis, subpts, b.deriv, rng)
-        res[i-length(subpts):i-1] = out[findin(rng, b.index), :]
+        res[i-length(subpts):i-1] = out[findall(in(b.index), rng), :]
     end
 
     res
 end
 
-function Base.call{B<:Basis1D, S<:Real, T<:Real}(b::B, pt::S, coeffs::Vector{T})
+function (b::Basis1D)(pt::S, coeffs::Vector{T}) where {S<:Real, T<:Real}
     (vals, idxs) = b(pt)
     dot(vals, coeffs[idxs])
 end
 
-function Base.call{B<:Basis1D, S<:Real, T<:Real}(b::B, pt::S, coeffs::Matrix{T})
+function (b::Basis1D)(pt::S, coeffs::Matrix{T}) where {S<:Real, T<:Real}
     (vals, idxs) = b(pt)
     vals' * coeffs[idxs,:]
 end
 
-Base.call{B<:Basis1D, S<:Real, T<:Real}(b::B, pts::Vector{S}, coeffs::Vector{T}) =
+(b::Basis1D)(pts::Vector{S}, coeffs::Vector{T}) where {S<:Real, T<:Real} =
     Float64[dot(vals, coeffs[idxs]) for (vals, idxs) in b(pts)]
 
-function Base.call{B<:Basis1D, S<:Real, T<:Real}(b::B, pts::Vector{S}, coeffs::Matrix{T})
+function (b::Basis1D)(pts::Vector{S}, coeffs::Matrix{T}) where {S<:Real, T<:Real}
     res = zeros(Float64, length(pts), size(coeffs, 2))
 
     for (i, (vals, idxs)) in enumerate(b(pts))

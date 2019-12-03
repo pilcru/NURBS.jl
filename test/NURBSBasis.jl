@@ -5,7 +5,7 @@ using NURBS.Bases
 # NURBSBasis inner constructor
 # ========================================================================
 
-bs = BSplineBasis(linspace(0, 4, 5), 3)
+bs = BSplineBasis(range(0, stop=4, length=5), 3)
 
 basis = NURBSBasis(bs, [1.1, 1.2, 1.3, 1.4, 1.5, 1.6], 1)
 @test basis.bs == bs
@@ -22,14 +22,14 @@ basis = NURBSBasis(bs, 2)
 @test basis.weights == ones(6)
 @test basis.deriv == 2
 
-basis = NURBSBasis(bs, linspace(4, 5, 6))
+basis = NURBSBasis(bs, range(4, stop=5, length=6))
 @test basis.bs == bs
-@test basis.weights == collect(linspace(4, 5, 6))
+@test basis.weights == collect(range(4, stop=5, length=6))
 @test basis.deriv == 0
 
 @test_throws ArgumentError NURBSBasis(deriv(bs))
-@test_throws ArgumentError NURBSBasis(bs, linspace(1, 2, 5))
-@test_throws ArgumentError NURBSBasis(bs, linspace(1, 2, 7))
+@test_throws ArgumentError NURBSBasis(bs, range(1, stop=2, length=5))
+@test_throws ArgumentError NURBSBasis(bs, range(1, stop=2, length=7))
 @test_throws ArgumentError NURBSBasis(bs, [-1.0; ones(5)])
 @test_throws ArgumentError NURBSBasis(bs, 3)
 @test_throws ArgumentError NURBSBasis(BSplineBasis([0, 1], 2), 2)
@@ -69,13 +69,15 @@ testeval_snn(bs, 5.0, [0.73141253905, 0.2318427624256, 0.0367446985247], 7:9)
 testeval_snn(bs, 5.5, [0.291244696239, 0.414209710077, 0.294545593684], 7:9)
 testeval_snn(bs, 6.0, [0.0355815798651, 0.228799037625, 0.73561938251], 7:9)
 testeval_snn(bs, 2pi, [0, 0, 1], 7:9)
-norms = sum(bs(collect(range(0, 2pi/99, 100)), coeffs) .^ 2, 2)
-@test_approx_eq norms ones(100)
+norms = sum(bs(collect(range(0, stop=2pi/99, length=100)), coeffs) .^ 2, dims=2)
+@test isapprox(norms, ones(100))
 
-for j in 1:2
-    for i in 0.5:0.5:6.0
-        testeval_sdn(bs, i)
+let bs = bs
+    for j in 1:2
+        for i in 0.5:0.5:6.0
+            testeval_sdn(bs, i)
+        end
+        bs = deriv(bs)
     end
-    bs = deriv(bs)
+    @test_throws ArgumentError deriv(bs)
 end
-@test_throws ArgumentError deriv(bs)

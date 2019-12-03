@@ -1,21 +1,24 @@
-immutable BSplineBasis <: Basis1D
+import IterTools: groupby, imap
+
+struct BSplineBasis <: Basis1D
     knots::Vector{Float64}
     order::Int
     deriv::Int
 
     function BSplineBasis(knots, order, deriv=0; extend=true)
-        @assert_ex(deriv < order, ArgumentError("Differentiation order not supported"))
+        if deriv >= order throw(ArgumentError("Differentiation order not supported")) end
 
         for (kn, kp) in zip(knots[2:end], knots[1:end-1])
-            @assert_ex(kn >= kp, ArgumentError("Knot vector must be nondecreasing"))
+            if kn < kp throw(ArgumentError("Knot vector must be nondecreasing")) end
         end
 
         if extend
             knots = [fill(knots[1], order-1); knots; fill(knots[end], order-1)]
         else
             for d in 1:order-1
-                @assert_ex(knots[1+d] == knots[1] && knots[end-d] == knots[end],
-                           ArgumentError("Expected $order repeated knots on either end"))
+                if knots[1+d] != knots[1] || knots[end-d] != knots[end]
+                    throw(ArgumentError("Expected $order repeated knots on either end"))
+                end
             end
         end
 
@@ -23,10 +26,10 @@ immutable BSplineBasis <: Basis1D
     end
 
     BSplineBasis(lft::Real, rgt::Real, elements::Int, order::Int) =
-        BSplineBasis(linspace(lft, rgt, elements+1), order)
+        BSplineBasis(range(lft, stop=rgt, length=elements+1), order)
 end
 
-typealias BSpline BasisFunction1D{BSplineBasis}
+const BSpline = BasisFunction1D{BSplineBasis}
 
 
 Base.length(b::BSplineBasis) = length(b.knots) - b.order
@@ -45,15 +48,15 @@ deriv(b::BSplineBasis) = BSplineBasis(b.knots, b.order, b.deriv+1; extend=false)
 deriv(b::BSplineBasis, order) = BSplineBasis(b.knots, b.order, b.deriv+order; extend=false)
 
 
-function supported{T<:Real}(b::BSplineBasis, pt::T)
+function supported(b::BSplineBasis, pt::T) where {T<:Real}
     kidx = b.order - 1 + searchsorted(b.knots[b.order:end], pt).stop
     stop = b.knots[kidx] == b.knots[end] ? kidx - b.order : kidx
     stop - b.order + 1 : stop
 end
 
-function supported{T<:Real}(b::BSplineBasis, pts::Vector{T})
+function supported(b::BSplineBasis, pts::Vector{T}) where {T<:Real}
     (min, max) = extrema(pts)
-    @assert_ex(min in domain(b) && max in domain(b), DomainError())
+    @assert(min in domain(b) && max in domain(b), "Domain error")
 
     idxs = zeros(Int, length(pts))
 
@@ -69,40 +72,36 @@ function supported{T<:Real}(b::BSplineBasis, pts::Vector{T})
         end
     end
 
-    imap(groupby(enumerate(idxs), i -> i[2])) do i
+    imap(groupby(i -> i[2], enumerate(idxs))) do i
         (pts[i[1][1]:i[end][1]], i[1][2] - b.order + 1 : i[1][2])
     end
 end
 
-macro bs_er_scale(bvals, knots, mid, num)
-    :($bvals ./= $knots[$mid:$mid+$num] - $knots[$mid-$num-1:$mid-1])
-end
-
-function evaluate_raw{T<:Real}(b::BSplineBasis, pts::Vector{T}, deriv::Int, rng::UnitRange{Int})
+function evaluate_raw(b::BSplineBasis, pts::Vector{T}, deriv::Int, rng::UnitRange{Int}) where {T<:Real}
     # Basis values of order 1 (piecewise constants)
     bvals = zeros(Float64, (b.order, length(pts)))
-    bvals[end,:] = 1.0
-
-    const p = b.order
-    const bi = rng.start + p
+    bvals[end,:] .= 1.0
+    
+    p = b.order
+    bi = rng.start + p
 
     # Order increment
     for k in 0:p-deriv-2
-        @bs_er_scale bvals[p-k:end,:] b.knots bi k
+        bvals[p-k:end, :] ./= b.knots[bi:bi+k] - b.knots[bi-k-1:bi-1]
 
         for (i, kp, kn) in zip(p-k-1:p-1, b.knots[bi-k-2:bi-2], b.knots[bi:bi+k])
-            bvals[i,:] .*= (pts - kp)'
-            bvals[i,:] += bvals[i+1,:] .* (kn - pts)'
+            bvals[i,:] .*= (pts .- kp)
+            bvals[i,:] .+= bvals[i+1,:] .* (kn .- pts)
         end
-        bvals[end,:] .*= (pts - b.knots[bi-1])'
+        bvals[end,:] .*= (pts .- b.knots[bi-1])
     end
 
     # Differentiation
     for k = p-deriv-1:p-2
-        @bs_er_scale bvals[p-k:end,:] b.knots bi k
+        bvals[p-k:end, :] ./= b.knots[bi:bi+k] - b.knots[bi-k-1:bi-1]
 
-        bvals[1:end-1,:] = -diff(bvals, 1)
-        bvals *= k + 1
+        bvals[1:end-1,:] = -diff(bvals, dims=1)
+        bvals .*= k + 1
     end
 
     bvals
