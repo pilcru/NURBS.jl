@@ -1,0 +1,18 @@
+name = "NURBS"
+uuid = "cbc382c9-75ad-5a02-90e9-14306f7bb271"
+authors = ["Pierre Cuvilliers"]
+version = "0.1.0"
+
+[deps]
+IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[compat]
+julia = "1.2"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+
+[targets]
+test = ["Test"]
