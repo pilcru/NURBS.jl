@@ -1,4 +1,3 @@
-import IterTools: product
 import LinearAlgebra: dot
 
 using NURBS.Utils
