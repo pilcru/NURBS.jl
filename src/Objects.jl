@@ -2,7 +2,11 @@ module Objects
 
 export Object, Object1D, Object2D,
        Curve, BCurve, NCurve,
-       Surface, BSurface, NSurface
+       Surface, BSurface, NSurface,
+       evalpoint,
+       evalderiv1, evalderiv2, evalderiv3,
+       evaltangent, evalnormal,
+       isocurve
 
 
 # Abstract Basis types
@@ -41,6 +45,8 @@ mutable struct ObjectFunction2D{O<:Object2D}
 
     ObjectFunction2D(object, indexU, indexV) = ObjectFunction2D(object, indexU, indexV, 0)
 end
+
+(o::Object)(u::T...) where {T<:Real} = evalpoint(o, u...)
 
 include("Curves.jl")
 include("Surfaces.jl")

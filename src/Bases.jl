@@ -78,19 +78,38 @@ function (b::Basis1D)(pt::S, coeffs::Vector{T}) where {S<:Real, T<:Real}
     dot(vals, coeffs[idxs])
 end
 
-function (b::Basis1D)(pt::S, coeffs::Matrix{T}) where {S<:Real, T<:Real}
+function (b::Basis1D)(pt::S, coeffs::Array{T, 2}) where {S<:Real, T<:Real}
     (vals, idxs) = b(pt)
     vals' * coeffs[idxs,:]
+end
+
+function (b::Basis1D)(pt::S, coeffs::Array{T, 3}) where {S<:Real, T<:Real}
+    res = Array{Float64}(undef, size(coeffs, 2), size(coeffs, 3))
+    (vals, idxs) = b(pt)
+    for i in 1:size(coeffs, 2)
+        res[i, :] = vals' * coeffs[idxs, i, :]
+    end
+    res
 end
 
 (b::Basis1D)(pts::Vector{S}, coeffs::Vector{T}) where {S<:Real, T<:Real} =
     Float64[dot(vals, coeffs[idxs]) for (vals, idxs) in b(pts)]
 
-function (b::Basis1D)(pts::Vector{S}, coeffs::Matrix{T}) where {S<:Real, T<:Real}
+function (b::Basis1D)(pts::Vector{S}, coeffs::Array{T, 2}) where {S<:Real, T<:Real}
     res = zeros(Float64, length(pts), size(coeffs, 2))
 
     for (i, (vals, idxs)) in enumerate(b(pts))
         res[i,:] = vals' * coeffs[idxs,:]
+    end
+
+    res
+end
+
+function (b::Basis1D)(pts::Vector{S}, coeffs::Array{T, 3}) where {S<:Real, T<:Real}
+    res = zeros(Float64, length(pts), size(coeffs, 2), size(coeffs, 3))
+
+    for (i, (vals, idxs)) in enumerate(b(pts)), j in 1:size(coeffs, 2)
+        res[i, j, :] = vals' * coeffs[idxs, j, :]
     end
 
     res

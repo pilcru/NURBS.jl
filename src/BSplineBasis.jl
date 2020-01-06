@@ -35,7 +35,6 @@ const BSpline = BasisFunction1D{BSplineBasis}
 Base.length(b::BSplineBasis) = length(b.knots) - b.order
 Base.size(b::BSplineBasis) = (length(b),)
 Base.getindex(b::BSplineBasis, i) = BSpline(b, i, b.deriv)
-
 nderivs(b::BSplineBasis) = b.order - 1
 
 domain(b::BSplineBasis) = Interval(b.knots[1], b.knots[end])
