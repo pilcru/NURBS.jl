@@ -22,7 +22,7 @@ end
 
 function evaltangent(crv::Curve, u)
     t = crv.d1b(u, crv.points)'
-    t ./= norm(t)
+    t ./ norm(t)
 end
 
 function evalderiv1(crv::Curve, u)

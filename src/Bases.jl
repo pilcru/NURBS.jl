@@ -84,12 +84,19 @@ function (b::Basis1D)(pt::S, coeffs::Array{T, 2}) where {S<:Real, T<:Real}
 end
 
 function (b::Basis1D)(pt::S, coeffs::Array{T, 3}) where {S<:Real, T<:Real}
-    res = Array{Float64}(undef, size(coeffs, 2), size(coeffs, 3))
     (vals, idxs) = b(pt)
-    for i in 1:size(coeffs, 2)
-        res[i, :] = vals' * coeffs[idxs, i, :]
-    end
-    res
+    #res = Array{Float64}(undef, size(coeffs, 2), size(coeffs, 3))
+    #for i in 1:size(coeffs, 2)
+    #    res[i, :] = vals' * coeffs[idxs, i, :]
+    #end
+    copy(reshape(
+        vals' * reshape(
+            coeffs[idxs, :, :], size(idxs, 1),
+            size(coeffs, 2) * size(coeffs, 3)
+        ),
+        size(coeffs, 2),
+        size(coeffs, 3)
+    ))
 end
 
 (b::Basis1D)(pts::Vector{S}, coeffs::Vector{T}) where {S<:Real, T<:Real} =

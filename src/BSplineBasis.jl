@@ -1,4 +1,5 @@
 import IterTools: groupby, imap
+using Zygote: @nograd
 
 struct BSplineBasis <: Basis1D
     knots::Vector{Float64}
@@ -76,7 +77,7 @@ function supported(b::BSplineBasis, pts::Vector{T}) where {T<:Real}
     end
 end
 
-function evaluate_raw(b::BSplineBasis, pts::Vector{T}, deriv::Int, rng::UnitRange{Int}) where {T<:Real}
+@nograd function evaluate_raw(b::BSplineBasis, pts::Vector{T}, deriv::Int, rng::UnitRange{Int}) where {T<:Real}
     # Basis values of order 1 (piecewise constants)
     bvals = zeros(Float64, (b.order, length(pts)))
     bvals[end,:] .= 1.0

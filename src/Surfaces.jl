@@ -21,6 +21,13 @@ struct Surface{BU<:Basis1D, BV<:Basis1D, T<:Real} <: Object2D
         d3bV = deriv(d2bV)
         new{BU, BV, T}(basisU, basisV, d1bU, d2bU, d3bU, d1bV, d2bV, d3bV, points)
     end
+
+    function Surface(srf::Surface{BU, BV, T}, moves::Array{T, 3}) where {BU<:Basis1D, BV<:Basis1D, T<:Real}
+        points = srf.points + moves
+        new{BU, BV, T}(
+            srf.basisU, srf.basisV, srf.d1bU, srf.d2bU, srf.d3bU, srf.d1bV, srf.d2bV, srf.d3bV, points
+        )
+    end
 end
 
 const BSurface = Surface{BSplineBasis, BSplineBasis}
@@ -35,8 +42,8 @@ function evalnormal(srf::Surface, u, v)
     E = dot(du, du)
     F = dot(du, dv)
     G = dot(dv, dv)
-    n = cross(du, dv)
-    n ./= norm(n)
+    n = cross(du, dv) ./ norm(cross(du, dv))
+    # n ./= norm(n)
     L = dot(duu, n)
     M = dot(duv, n)
     N = dot(dvv, n)
@@ -53,10 +60,10 @@ function evalnormal(srf::Surface, u, v)
     end
     λ1 = (κ1*F - M) / (N - κ1*G)
     λ2 = (κ2*F - M) / (N - κ2*G)
-    d1 = (du + λ1*dv)
-    d1 ./= norm(d1)
-    d2 = (du + λ2*dv)
-    d2 ./= norm(d2)
+    d1 = (du + λ1*dv) ./ norm(du + λ1*dv)
+    # d1 ./= norm(d1)
+    d2 = (du + λ2*dv) ./ norm(du + λ2*dv)
+    # d2 ./= norm(d2)
     (n, κ1, κ2, du, dv, d1, d2, dS2)
 end
 
